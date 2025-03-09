@@ -1,15 +1,26 @@
-use actix_web::{get, web, App, HttpServer, Responder};
+use actix_web::{App, HttpServer, web};
+use sqlx::PgPool;
+use std::env;
+use dotenvy::dotenv; // Importação necessária
+use crate::database::connection::establish_connection;
+use crate::controllers::user_controller;
 
-#[get("/")]
-async fn hello() -> impl Responder {
-    "Olá, Actix!"
-}
+mod database;
+mod models;
+mod services;
+mod controllers;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    dotenv().ok(); // Adicione essa linha para carregar o .env
+    
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL não definida");
+    let pool = establish_connection(&database_url).await;
+
+    HttpServer::new(move || {
         App::new()
-            .service(hello)
+            .app_data(web::Data::new(pool.clone()))
+            .configure(user_controller::configure)
     })
     .bind("127.0.0.1:8080")?
     .run()
